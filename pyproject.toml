@@ -1,0 +1,39 @@
+# Development environment for this fork: the Python side of the Python+Scala
+# notebooks. This is deliberately NOT a package definition for the `d2l`
+# library -- that still lives in setup.py, which is what the book build ships
+# (see `resources` in config.ini). Hence `package = false`: uv resolves and
+# installs the dependencies below into .venv without ever building this
+# directory, so setup.py's 2023 pins stay out of the way.
+#
+#   uv sync            # create/update .venv from uv.lock
+#   bash tools/setup_env.sh   # the above, plus the Almond Scala kernels
+[project]
+name = "d2l-en-scala"
+version = "0.1.0"
+description = "Dive into Deep Learning, with Scala examples alongside the Python ones"
+requires-python = "==3.13.*"
+dependencies = [
+    "jupyterlab",
+    "notebook",
+    "ipykernel",
+    "ipywidgets",
+    "numpy",
+    "matplotlib",
+    "pandas",
+    "torch",
+    # d2lbook parses the d2l markdown sources (tab extraction). notedown, which
+    # it depends on, still imports pkg_resources, hence the setuptools pin.
+    "d2lbook",
+    "setuptools<81",
+    # ScalaPy embeds this interpreter in the JVM to back dimwit/deepwit, so
+    # their Python requirements live here too (see tools/README.md).
+    "jax>=0.8.2",
+    "einops>=0.8.1",
+    "d2l-scala-tools",
+]
+
+[tool.uv.sources]
+d2l-scala-tools = { path = "tools", editable = true }
+
+[tool.uv]
+package = false
