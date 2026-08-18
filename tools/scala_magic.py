@@ -53,6 +53,16 @@ _RICH_MIMES = ("application/vnd.vegalite.v5+json", "application/vnd.vega.v5+json
 _VEGALITE_MIME = "application/vnd.vegalite.v5+json"
 _VEGALITE_SCHEMA = "https://vega.github.io/schema/vega-lite/v5.json"
 
+#: run in the Almond kernel right after startup, before any user cell.  pprint's
+#: type printer mis-renders inferred types -- its structural walker prints the
+#: whole value's type into any node it has no case for, so `t0.pow(t0)` comes out
+#: as `Tensor[Tensor[EmptyTuple, Float32], Float32]`.  tools/tprint ships a
+#: corrected `TPrint`, and importing it into cell scope wins over pprint's, which
+#: is deliberately low priority.  Ammonite replays the import into every later
+#: cell.  Set D2L_SCALA_NO_PREDEF=1 to skip (e.g. if the jar is not published).
+PREDEF = """import $ivy.`ch.contrafactus::d2l-tprint:0.1.0-SNAPSHOT`
+import d2l.TPrintNice.given"""
+
 
 class ScalaKernel:
     """A lazily started Almond kernel plus a blocking client."""
@@ -84,8 +94,31 @@ class ScalaKernel:
             km.shutdown_kernel(now=True)
             raise
         self._km, self._kc = km, kc
+        if not os.environ.get("D2L_SCALA_NO_PREDEF"):
+            self._run_predef()
         sys.stderr.write("[scala] ready\n")
         sys.stderr.flush()
+
+    def _run_predef(self):
+        """Run PREDEF, surfacing only failures -- its own output is noise."""
+        msg_id = self._kc.execute(PREDEF)
+        while True:
+            try:
+                msg = self._kc.get_iopub_msg(timeout=EXEC_TIMEOUT)
+            except queue.Empty:
+                sys.stderr.write("[scala] predef timed out\n")
+                return
+            if msg["parent_header"].get("msg_id") != msg_id:
+                continue
+            kind, content = msg["msg_type"], msg["content"]
+            # Almond reports compile failures as stderr text, not as an error msg.
+            if kind == "error":
+                sys.stderr.write("[scala] predef failed: {}: {}\n".format(
+                    content.get("ename", "error"), content.get("evalue", "")))
+            elif kind == "stream" and content["name"] == "stderr":
+                sys.stderr.write("[scala] predef: " + content["text"])
+            elif kind == "status" and content["execution_state"] == "idle":
+                return
 
     def shutdown(self):
         if self._kc is not None:

@@ -135,6 +135,43 @@ Later cells reach earlier values by qualifying (`Scalars.x`) and re-import
 `dimwit.*` inside their own object. Verbose for a textbook -- see the open
 question at the end of this file.
 
+### Why the types in cell output need fixing up
+
+Ammonite prints each `name: Type = value` line by summoning a `pprint.TPrint[T]`
+at the call site, inside the cell's own wrapper. pprint's instance walks the type
+structurally, and the fallback branch of that walker
+([`TPrintImpl.scala`][tprintimpl], `case _ => Type.show[T]`) prints the **top
+level** type instead of the node it is visiting -- so every node it has no case
+for is replaced by a copy of the whole value's type:
+
+```scala
+val powAlone = t0.pow(t0)
+// pprint:  Tensor[dimwit.tensor.Tensor[scala.Tuple$package.EmptyTuple, ...], Float32]
+// actual:  Tensor[EmptyTuple, Float32]
+```
+
+Inside a tuple the substitution repeats per element, which is how a four-element
+tuple of scalars grows into a screenful. Nothing is wrong with inference -- the
+same expression type-checks fine against its true type, and Metals shows it
+correctly, because Metals uses the compiler's printer rather than pprint's.
+
+[`tprint/TPrintNice.scala`](tprint/TPrintNice.scala) is a corrected `TPrint`,
+following pprint's walker so tuples and functions keep their sugar, but printing
+the current node in the fallback, and collapsing a `*:` chain that ends in
+`EmptyTuple` into tuple form -- shapes arrive in cons form, and
+`Tensor[(Row, Col), Float32]` reads better than
+`Tensor[Row *: Col *: EmptyTuple, Float32]`. `setup_env.sh` publishes it to
+`~/.ivy2/local`, and `scala_magic` imports it in a predef right after kernel
+startup; Ammonite replays that import into every later cell, so notebooks need no
+import of their own. `D2L_SCALA_NO_PREDEF=1` skips the predef if the jar is
+missing.
+
+It has to be a published jar rather than a cell: Ammonite wraps cell code in a
+class, so a macro implementation written in a cell is not static and the compiler
+rejects the splice with *"Malformed macro"*.
+
+[tprintimpl]: https://github.com/com-lihaoyi/PPrint
+
 ## Generating a notebook from a chapter
 
 ```bash

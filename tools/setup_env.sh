@@ -90,6 +90,13 @@ json.dump({"argv": argv, "display_name": "Scala 3 (Almond)", "language": "scala"
 print(f"    wrote {kdir}/kernel.json")
 PY
 
+echo "==> Notebook type printer: tools/tprint -> ~/.ivy2/local"
+# pprint's TPrint prints the whole value's type into any node its walker has no
+# case for, which mangles inferred dimwit types in the REPL.  This tiny library
+# ships a corrected instance; scala_magic's predef imports it into every kernel.
+(cd "$ROOT/tools/tprint" && scala-cli --power publish local . >/dev/null)
+echo "    published ch.contrafactus::d2l-tprint:0.1.0-SNAPSHOT"
+
 echo
 echo "==> Done. Kernels:"
 "$ROOT/.venv/bin/jupyter" kernelspec list
