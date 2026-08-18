@@ -21,6 +21,9 @@ dependencies = [
     "matplotlib",
     "pandas",
     "torch",
+    # d2l/torch.py imports torchvision at module scope, so the chapters that do
+    # `from d2l import torch as d2l` need it even when they never touch an image.
+    "torchvision",
     # d2lbook parses the d2l markdown sources (tab extraction). notedown, which
     # it depends on, still imports pkg_resources, hence the setuptools pin.
     "d2lbook",

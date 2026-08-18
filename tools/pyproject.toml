@@ -1,0 +1,14 @@
+# Notebook tooling for the Scala side of this fork, installed into .venv as an
+# editable package so `%load_ext scala_magic` resolves from any directory.
+[project]
+name = "d2l-scala-tools"
+version = "0.1.0"
+description = "Scala cell magic and markdown->notebook converter for the d2l Scala fork"
+requires-python = ">=3.13"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["scala_magic", "md2ipynb"]
